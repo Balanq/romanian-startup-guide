@@ -6,14 +6,6 @@
     <title>Ghid Interactiv: Startup în România cu Fonduri UE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Visualization & Content Choices:
-        - Funding Programs: Chart.js bar chart & HTML table. Interaction: ✨ "Get AI Tips" button calls backend proxy. Justification: Visual comparison of financial aid, detailed textual comparison, and AI-powered application advice. Library: Chart.js, Vanilla JS for table, Backend Proxy for Gemini API.
-        - SRL Registration Process: Step-by-step HTML/CSS list.
-        - Support Ecosystem (Section 4): Goal: Inform. Viz/Presentation: Cards for each entity. Interaction: Static cards. Justification: Easy overview of support options. Method: HTML/CSS/Tailwind.
-        - Checklists (Table 2, Section 7.7): Goal: Inform/Organize. Viz/Presentation: Interactive HTML checklists. Interaction: Checkable boxes (visual feedback). Justification: Practical tool. Method: HTML/CSS.
-        - Recommendations: List with ✨ "Elaborate with AI" buttons calling backend proxy. Justification: Provides deeper, AI-powered insights into general advice. Method: HTML/CSS/Tailwind + JS, Backend Proxy for Gemini API.
-        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. API key is NOT in this client-side code.
-    -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -708,17 +700,18 @@
         });
         
         async function callProxyAPI(userPrompt) {
-            // IMPORTANT: Replace this with the actual URL of your deployed Google Cloud Function or other backend proxy
-            const proxyApiUrl = "YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE"; 
+            // This URL was updated with the user's provided Cloud Run service URL
+            const proxyApiUrl = "https://gemini-proxy-service-45631876843.europe-west4.run.app"; 
 
-            if (proxyApiUrl === "YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE" || proxyApiUrl.trim() === "") {
-                console.error("Proxy API URL is not configured in the HTML file.");
+            if (proxyApiUrl === "YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE" || proxyApiUrl.trim() === "" || proxyApiUrl === "https://gemini-proxy-service-45631876843.europe-west4.run.app" && proxyApiUrl.includes("YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE")) { 
+                // The second part of the OR condition is redundant now, but kept the placeholder check logic
+                console.error("Proxy API URL is not configured correctly in the HTML file.");
                 loadingSpinner.style.display = 'none';
-                aiModalText.innerHTML = "Adresa URL a funcției backend (proxy) nu este configurată în fișierul HTML. Vă rugăm să actualizați variabila 'proxyApiUrl' în scriptul paginii cu URL-ul corect al funcției dumneavoastră serverless.";
-                return; // Stop execution if URL is not set
+                aiModalText.innerHTML = "Adresa URL a funcției backend (proxy) nu este configurată corect în fișierul HTML. Vă rugăm să verificați variabila 'proxyApiUrl' în scriptul paginii.";
+                return; 
             }
             
-            const payload = { prompt: userPrompt }; // Send the user's prompt to your backend proxy
+            const payload = { prompt: userPrompt }; 
 
             try {
                 const response = await fetch(proxyApiUrl, {
@@ -739,31 +732,31 @@
                     }
                     loadingSpinner.style.display = 'none';
                     aiModalText.innerHTML = `Eroare la comunicarea cu serverul proxy. ${errorDetails}`;
-                    return; // Stop execution on error
+                    return; 
                 }
 
-                const result = await response.json(); // Expecting JSON like { "text": "AI generated text" } or { "error": "some error from proxy" }
+                const result = await response.json(); 
 
                 if (result.error) {
                     console.error("Error from proxy server:", result.error);
                     loadingSpinner.style.display = 'none';
                     aiModalText.innerHTML = `A apărut o eroare de la serverul proxy: ${result.error}`;
-                    return; // Stop execution on error
+                    return; 
                 }
                 
                 if (result.text) { 
-                    return result.text; // Return the AI-generated text
+                    return result.text; 
                 } else {
                     console.error("Unexpected response structure from proxy:", result);
                     loadingSpinner.style.display = 'none';
                     aiModalText.innerHTML = "Răspuns neașteptat de la serverul proxy. Asigurați-vă că proxy-ul returnează un obiect JSON cu o proprietate 'text'.";
-                    return; // Stop execution
+                    return; 
                 }
             } catch (error) { 
                 console.error("Fetch/Processing Error in callProxyAPI:", error);
                 loadingSpinner.style.display = 'none';
                 aiModalText.innerHTML = `A apărut o eroare la conectarea la serverul proxy: ${error.message}. Verificați consola pentru detalii și configurația URL-ului proxy.`;
-                return; // Stop execution on error
+                return; 
             }
         }
 
@@ -773,9 +766,9 @@
             const tips = await callProxyAPI(userPrompt);
             
             loadingSpinner.style.display = 'none'; 
-            if (tips) { // Only update if tips were successfully fetched
+            if (tips) { 
                 aiModalText.innerHTML = tips.replace(/\n/g, '<br>'); 
-            } else if (!aiModalText.innerHTML) { // If no error message was set by callProxyAPI
+            } else if (!aiModalText.innerHTML && !aiModal.classList.contains('hidden')) { 
                  aiModalText.innerHTML = "Nu s-au putut obține sfaturi AI în acest moment.";
             }
         }
@@ -786,9 +779,9 @@
             const elaboration = await callProxyAPI(userPrompt);
 
             loadingSpinner.style.display = 'none'; 
-            if (elaboration) { // Only update if elaboration was successfully fetched
+            if (elaboration) { 
                 aiModalText.innerHTML = elaboration.replace(/\n/g, '<br>');
-            } else if (!aiModalText.innerHTML) { // If no error message was set by callProxyAPI
+            } else if (!aiModalText.innerHTML && !aiModal.classList.contains('hidden')) { 
                 aiModalText.innerHTML = "Nu s-a putut obține elaborarea AI în acest moment.";
             }
         }
@@ -796,3 +789,19 @@
     </script>
 </body>
 </html>
+```
+
+**Next Steps for You:**
+
+1.  **Save this Code:** Copy this entire HTML block and save it as your `index.html` file (or whatever you named it) on your computer. This version now correctly points to your live Cloud Run service.
+2.  **Host This Updated HTML File:** Upload this new `index.html` to your GitHub Pages repository (or your chosen hosting provider). If you're using GitHub Pages, make sure to commit and push this change.
+3.  **Crucially: Ensure Your Cloud Run Service is Configured Correctly:**
+    * Go back to your Google Cloud Console and double-check your `gemini-proxy-service` in Cloud Run.
+    * **Make absolutely sure you have set the `GEMINI_API_KEY` environment variable correctly** within the settings for that Cloud Run service. If this key is missing or incorrect in the Cloud Run environment, your proxy function will not be able to call the Gemini API, and the AI features will fail.
+4.  **Test Thoroughly:**
+    * Open your live GitHub Pages URL (or other hosted URL).
+    * Click the AI buttons.
+    * Check the browser console (F12) for errors if it doesn't work.
+    * Check the logs for your `gemini-proxy-service` in the Google Cloud Console (under Cloud Run > Your Service > Logs) for any errors on the backend.
+
+You're very close! This HTML is now set up to talk to your backend. The most common remaining issue if it doesn't work would be the `GEMINI_API_KEY` not being correctly set up *inside your Google Cloud Run service's environment variable
