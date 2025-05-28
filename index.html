@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghid Interactiv: Startup în România cu Fonduri UE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices:
+        - Funding Programs: Chart.js bar chart & HTML table. Interaction: ✨ "Get AI Tips" button calls backend proxy. Justification: Visual comparison of financial aid, detailed textual comparison, and AI-powered application advice. Library: Chart.js, Vanilla JS for table, Backend Proxy for Gemini API.
+        - SRL Registration Process: Step-by-step HTML/CSS list.
+        - Support Ecosystem (Section 4): Goal: Inform. Viz/Presentation: Cards for each entity. Interaction: Static cards. Justification: Easy overview of support options. Method: HTML/CSS/Tailwind.
+        - Checklists (Table 2, Section 7.7): Goal: Inform/Organize. Viz/Presentation: Interactive HTML checklists. Interaction: Checkable boxes (visual feedback). Justification: Practical tool. Method: HTML/CSS.
+        - Recommendations: List with ✨ "Elaborate with AI" buttons calling backend proxy. Justification: Provides deeper, AI-powered insights into general advice. Method: HTML/CSS/Tailwind + JS, Backend Proxy for Gemini API.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. API key is NOT in this client-side code.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb; 
+        }
+        .nav-link {
+            @apply px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900 transition-colors;
+        }
+        .nav-link-active {
+            @apply bg-sky-600 text-white px-3 py-2 rounded-md text-sm font-medium;
+        }
+        .section-title {
+            @apply text-3xl font-bold text-sky-700 mb-6;
+        }
+        .subsection-title {
+            @apply text-2xl font-semibold text-sky-600 mb-4 mt-6;
+        }
+        .card {
+            @apply bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 450px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .accordion-header {
+            @apply bg-sky-100 text-sky-700 p-4 rounded-t-lg cursor-pointer flex justify-between items-center font-semibold hover:bg-sky-200 transition-colors;
+        }
+        .accordion-content {
+            @apply bg-white p-4 rounded-b-lg border border-t-0 border-gray-200;
+        }
+        .checklist-item {
+            @apply flex items-center mb-2;
+        }
+        .checklist-item input[type="checkbox"] {
+            @apply h-5 w-5 text-sky-600 border-gray-300 rounded focus:ring-sky-500 mr-3;
+        }
+        .ai-button {
+            @apply bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-xs font-semibold py-1 px-2 rounded-md shadow-md hover:shadow-lg transition-all duration-150 ease-in-out;
+        }
+        /* Modal Styles */
+        .modal-overlay {
+            @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100];
+        }
+        .modal-content {
+            @apply bg-white p-6 rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto;
+        }
+        .modal-title {
+            @apply text-2xl font-bold text-sky-700 mb-4;
+        }
+        .modal-body {
+            @apply text-gray-700 leading-relaxed;
+        }
+        .modal-body ul {
+            @apply list-disc list-inside pl-4 space-y-1;
+        }
+        .modal-close-btn {
+            @apply mt-6 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg transition-colors;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-sky-700">Startup RO <span class="text-yellow-500">UE</span></span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#home" class="nav-link nav-link-active">Acasă</a>
+                        <a href="#funding" class="nav-link">Finanțare</a>
+                        <a href="#srl-registration" class="nav-link">Înființare SRL</a>
+                        <a href="#support" class="nav-link">Sprijin</a>
+                        <a href="#challenges" class="nav-link">Provocări</a>
+                        <a href="#post-funding" class="nav-link">Post-Finanțare</a>
+                        <a href="#recommendations" class="nav-link">Recomandări</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="md:hidden hidden bg-white shadow-lg py-2">
+            <a href="#home" class="block nav-link px-4">Acasă</a>
+            <a href="#funding" class="block nav-link px-4">Finanțare</a>
+            <a href="#srl-registration" class="block nav-link px-4">Înființare SRL</a>
+            <a href="#support" class="block nav-link px-4">Sprijin</a>
+            <a href="#challenges" class="block nav-link px-4">Provocări</a>
+            <a href="#post-funding" class="block nav-link px-4">Post-Finanțare</a>
+            <a href="#recommendations" class="block nav-link px-4">Recomandări</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <section id="home" class="pt-16 -mt-16 mb-12">
+            <div class="text-center bg-gradient-to-r from-sky-600 to-sky-400 text-white p-12 rounded-lg shadow-xl">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Ghid Complet pentru Startup-ul tău în România cu Fonduri UE (2025)</h1>
+                <p class="text-lg md:text-xl mb-6">Navighează cu succes peisajul antreprenorial românesc și accesează finanțare europeană pentru afacerea ta.</p>
+                <a href="#funding" class="bg-yellow-400 hover:bg-yellow-500 text-sky-800 font-bold py-3 px-6 rounded-lg text-lg transition-colors">Descoperă Oportunitățile</a>
+            </div>
+            <div class="mt-10 card">
+                 <h2 class="section-title text-center">Introducere în Ecosistemul Antreprenorial Românesc</h2>
+                <p class="text-lg text-gray-700 mb-4 leading-relaxed">
+                    Demararea unei afaceri în România, susținută de fonduri europene, deschide un orizont vast de oportunități. Mediul de afaceri din ce în ce mai favorabil, marcat de politici fiscale atractive precum rate scăzute de impozitare pentru microîntreprinderi, se îmbină cu sprijinul financiar substanțial din partea Uniunii Europene. Această sinergie vizează în mod special stimularea inovației, accelerarea transformării digitale și promovarea unei tranziții verzi în economia românească.
+                </p>
+                <p class="text-lg text-gray-700 leading-relaxed">
+                    Acest ghid interactiv este conceput pentru a vă oferi o foaie de parcurs detaliată, de la identificarea programelor de finanțare potrivite și parcurgerea procedurilor legale de înființare a companiei (cu accent pe SRL), până la valorificarea ecosistemului de sprijin și înțelegerea considerațiilor operaționale continue. Alinierea obiectivelor naționale de dezvoltare ale României, în special cele din Planul Național de Redresare și Reziliență (PNRR), cu strategiile UE mai largi, creează un teren fertil pentru startup-urile din tehnologie, inițiative verzi și servicii digitale.
+                </p>
+            </div>
+        </section>
+
+        <section id="funding" class="pt-16 -mt-16 mb-12 card">
+            <h2 class="section-title">Oportunități de Finanțare UE și Naționale</h2>
+             <p class="text-lg text-gray-700 mb-6">
+                Antreprenorii care doresc să înființeze o afacere în România pot accesa o gamă variată de oportunități de finanțare. Acestea includ inițiative strategice la nivelul Uniunii Europene care stabilesc cadrul și furnizează instrumente financiare, precum și programe naționale românești specifice, adesea cofinanțate de UE, care direcționează aceste resurse către afacerile locale. Această secțiune vă va ghida prin principalele surse de finanțare, oferind detalii despre eligibilitate, sume și domenii de interes.
+            </p>
+
+            <div class="mb-8">
+                <h3 class="subsection-title">Comparație Programe Cheie de Finanțare (2025)</h3>
+                <p class="mb-4 text-gray-600">Vizualizați și comparați granturile maxime și detaliile programelor principale disponibile pentru startup-uri în România. Folosiți butoanele "Obține Sfaturi AI ✨" pentru sugestii personalizate.</p>
+                <div class="chart-container mb-6">
+                    <canvas id="fundingProgramsChart"></canvas>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="fundingTable" class="min-w-full bg-white border border-gray-200 rounded-lg shadow">
+                        <thead class="bg-sky-100">
+                            <tr>
+                                <th class="px-4 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onclick="sortTable(0)">Program <span class="sort-arrow"></span></th>
+                                <th class="px-4 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onclick="sortTable(1)">Beneficiar Țintă <span class="sort-arrow"></span></th>
+                                <th class="px-4 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onclick="sortTable(2)">Grant Maxim (EUR/RON) <span class="sort-arrow"></span></th>
+                                <th class="px-4 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onclick="sortTable(3)">Cofinanțare (%) <span class="sort-arrow"></span></th>
+                                <th class="px-4 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Obiectiv Principal</th>
+                                <th class="px-4 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Perspective AI</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="funding-details">
+                 <div class="accordion-item mb-4">
+                    <div class="accordion-header" data-target="eu-initiatives-content">
+                        <span>Inițiative și Strategii la Nivel UE</span>
+                        <span class="arrow transform transition-transform duration-300">&#9660;</span>
+                    </div>
+                    <div id="eu-initiatives-content" class="accordion-content hidden">
+                        <h4 class="text-xl font-semibold text-sky-500 mb-2">Strategia "Choose Europe to Start and Scale"</h4>
+                        <p class="mb-2">Inițiativa Comisiei Europene pentru a poziționa Europa ca hub global pentru companii tehnologice. Se concentrează pe reglementare favorabilă inovației, acces la finanțare, expansiune pe piață, atragerea talentelor și acces la infrastructură. Include inițiative precum "European 28th regime" și "European Business Wallet".</p>
+                        <h4 class="text-xl font-semibold text-sky-500 mb-2 mt-4">Programul InvestEU</h4>
+                        <p class="mb-2">Mobilizează peste 372 miliarde EUR în investiții publice și private, cu o garanție UE de 26.2 miliarde EUR. Startup-urile accesează finanțare prin intermediari financiari locali (bănci, fonduri de capital) parteneri ai Fondului European de Investiții (FEI).</p>
+                        <h4 class="text-xl font-semibold text-sky-500 mb-2 mt-4">Fondul pentru IMM-uri (Ideas Powered for business)</h4>
+                        <p>Grant gestionat de EUIPO pentru a ajuta IMM-urile să își protejeze drepturile de proprietate intelectuală (mărci, desene, brevete). Oferă vouchere pentru rambursarea costurilor de înregistrare IP și servicii IP Scan (până la 75-90%). Perioada 2025: 3 feb - 5 dec.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-4">
+                    <div class="accordion-header" data-target="national-programs-content">
+                        <span>Programe Naționale Cheie (Cofinanțate UE)</span>
+                         <span class="arrow transform transition-transform duration-300">&#9660;</span>
+                    </div>
+                    <div id="national-programs-content" class="accordion-content hidden">
+                        <h4 class="text-xl font-semibold text-sky-500 mb-2">Programul StartUp Nation (Ediția 2025)</h4>
+                        <p class="mb-2">Inițiativă guvernamentală pentru stimularea IMM-urilor noi, cu accent pe crearea de locuri de muncă. Granturi de până la 250.000 RON (~50.000 EUR), cofinanțare 10%. Necesită curs antreprenorial și plan de afaceri. Platforma: minimis.imm.gov.ro.</p>
+                        <h4 class="text-xl font-semibold text-sky-500 mb-2 mt-4">Planul Național de Redresare și Reziliență (PNRR) România</h4>
+                        <p class="mb-2">Cadru strategic cu 28.5 miliarde EUR (granturi și împrumuturi) pentru redresare economică, tranziție verde (44.1%) și digitală (21.8%). Include grantul "Digitalizarea IMM-urilor" (până la 100.000 EUR). Portal MIPE: proiecte.pnrr.gov.ro. Proiectele trebuie finalizate până în august 2026.</p>
+                        <h4 class="text-xl font-semibold text-sky-500 mb-2 mt-4">Programul Tranziție Justă (PTJ)</h4>
+                        <p class="mb-2">Sprijină diversificarea economică în județele Hunedoara, Gorj, Dolj, Prahova, Galați, Mureș. Granturi pentru microîntreprinderi: 50.000 – 300.000 EUR, cofinanțare 10%. Eligibile: construcții, echipamente, tehnologii verzi, formare profesională. Necesită crearea a min. 1 loc de muncă.</p>
+                         <h4 class="text-xl font-semibold text-sky-500 mb-2 mt-4">Alte Surse Relevante</h4>
+                        <p>Include scheme de dezvoltare regională, granturi specifice regiunii București-Ilfov (PR BI P1/1.8/1/2025: 25.000-300.000 EUR), granturi norvegiene și SEE, fonduri elvețiene (SME Eco-Tech), fonduri pentru stocarea energiei.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="srl-registration" class="pt-16 -mt-16 mb-12 card">
+            <h2 class="section-title">Înființarea Companiei SRL: Ghid Pas cu Pas</h2>
+             <p class="text-lg text-gray-700 mb-6">
+                Pentru cetățenii UE care intenționează să înființeze o afacere în România, în special una care vizează finanțare UE, înțelegerea procesului de înregistrare a companiei este esențială. Structura juridică cea mai comună și adesea cea mai avantajoasă pentru startup-uri și IMM-uri este Societatea cu Răspundere Limitată (SRL). Această secțiune detaliază pașii necesari, documentația, costurile estimate și opțiunile de înregistrare la distanță.
+            </p>
+            <h3 class="subsection-title">Procesul de Înregistrare la ONRC</h3>
+            <ol class="list-decimal list-inside space-y-4 text-gray-700">
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 1: Rezervarea Denumirii Companiei</strong>
+                    <p class="text-sm">Alegeți și rezervați un nume unic pentru companie prin portalul ONRC sau la un birou local. Pregătiți cel puțin trei opțiuni. Rezervarea este de obicei valabilă o lună.</p>
+                </li>
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 2: Asigurarea Sediului Social</strong>
+                    <p class="text-sm">Orice companie românească trebuie să aibă o adresă de sediu social înregistrată legal în România. Opțiuni: închiriere spațiu, servicii de birou virtual, utilizarea temporară a adresei unei firme de avocatură. Dovada dreptului de folosință este obligatorie.</p>
+                </li>
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 3: Redactarea Actului Constitutiv</strong>
+                    <p class="text-sm">Documentul fundamental al SRL-ului. Necesită de obicei autorizare de către un avocat sau notificare. Include detalii despre asociați, capital, obiect de activitate (coduri CAEN), structura de management, UBO.</p>
+                </li>
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 4: Stabilirea și Depunerea Capitalului Social</strong>
+                    <p class="text-sm">Capitalul social minim variază (ex: 1 RON, 200 RON - verificați la ONRC). Dovada depunerii într-un cont bancar este necesară înainte de înregistrare.</p>
+                </li>
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 5: Pregătirea Documentației Necesare (Cetățeni UE)</strong>
+                    <p class="text-sm">Include copii ID-uri asociați/administratori, specimene de semnătură, declarații pe proprie răspundere (UBO, cazier fiscal, lipsa cazierului penal relevant), dovada sediului social și a depunerii capitalului, formulare ONRC.</p>
+                </li>
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 6: Depunerea Documentelor la ONRC</strong>
+                    <p class="text-sm">Dosarul complet se poate depune personal la ONRC local sau electronic prin portalul ONRC. Documentele trebuie să fie în limba română.</p>
+                </li>
+                <li class="p-4 bg-sky-50 rounded-lg shadow-sm">
+                    <strong class="text-sky-700">Pasul 7: Publicarea în Monitorul Oficial</strong>
+                    <p class="text-sm">După înregistrare, înființarea SRL-ului este publicată în Monitorul Oficial, Partea a IV-a.</p>
+                </li>
+            </ol>
+
+            <h3 class="subsection-title">Documente Cheie pentru Înregistrare SRL (Cetățean UE)</h3>
+             <div id="srl-checklist" class="space-y-3 mt-4">
+                <label class="checklist-item"><input type="checkbox" disabled> Certificat de Rezervare Denumire Companie</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Act Constitutiv (notarizat/certificat de avocat)</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Documente de Identitate Asociați/Administratori (copii)</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Dovada Sediului Social</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Dovada Depunerii Capitalului Social</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Specimen de Semnătură Administrator(i) (notarizat/dat la ONRC)</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Declarații pe Proprie Răspundere (UBO, cazier fiscal, etc.)</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Cerere de Înregistrare (formular ONRC)</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Formulare de Înregistrare Fiscală (dacă e cazul)</label>
+                <label class="checklist-item"><input type="checkbox" disabled> Procură (dacă un reprezentant se ocupă de proces)</label>
+            </div>
+            <p class="mt-2 text-sm text-gray-600"><i>Notă: Aceasta este o listă indicativă. Verificați cerințele exacte și actuale la ONRC.</i></p>
+
+            <div class="grid md:grid-cols-2 gap-6 mt-8">
+                <div class="card bg-sky-50">
+                    <h4 class="text-xl font-semibold text-sky-700 mb-2">Termene și Costuri</h4>
+                    <p><strong>Timp:</strong> 10-14 zile de la depunerea dosarului complet.</p>
+                    <p><strong>Taxă de stat SRL:</strong> ~250 RON (~€50).</p>
+                    <p><strong>Taxe notariale:</strong> €50 - €150.</p>
+                    <p><strong>Capital social:</strong> Sumă nominală (ex: 1-200 RON).</p>
+                    <p><strong>Sediu social (externalizat):</strong> ~€300/an.</p>
+                    <p><strong>Taxe agenție (asistență completă):</strong> €2,000 - €8,820+ (variază).</p>
+                </div>
+                <div class="card bg-sky-50">
+                    <h4 class="text-xl font-semibold text-sky-700 mb-2">Considerații Fiscale Inițiale</h4>
+                    <p><strong>CIF (Cod Identificare Fiscală):</strong> Primit automat.</p>
+                    <p><strong>Înregistrare TVA:</strong> Obligatorie la cifră de afaceri > 300.000 RON (~€60.000). Opțională sub acest prag. Rata standard 19%.</p>
+                    <p><strong>Impozit Microîntreprinderi:</strong>
+                        <ul class="list-disc list-inside text-sm ml-4">
+                            <li><strong>1% pe venituri</strong> (cifră afaceri ≤ €500.000 ȘI min. 1 angajat full-time).</li>
+                            <li><strong>16% pe profit</strong> (fără angajați).</li>
+                        </ul>
+                    </p>
+                    <p><strong>Impozit pe Profit Standard:</strong> 16% (dacă nu se aplică regimul micro).</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="support" class="pt-16 -mt-16 mb-12 card">
+            <h2 class="section-title">Ecosistemul de Sprijin pentru Startup-uri</h2>
+             <p class="text-lg text-gray-700 mb-6">
+                România oferă un sistem de sprijin pe mai multe niveluri pentru startup-uri, de la organisme strategice UE și ministere naționale care gestionează programe de granturi, până la rețele de sprijin pentru afaceri care oferă consultanță practică și programe de intervenție directă. Angajarea strategică cu aceste entități poate îmbunătăți semnificativ parcursul unui startup. Această secțiune prezintă principalele organizații și programe de suport.
+            </p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600 mb-2">MIPE</h3>
+                    <p class="text-sm text-gray-600">Ministerul Investițiilor și Proiectelor Europene. Autoritatea principală pentru managementul fondurilor UE (PNRR, PTJ). Resurse: mfe.gov.ro, oportunitati-ue.gov.ro.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600 mb-2">MEAT</h3>
+                    <p class="text-sm text-gray-600">Ministerul Economiei, Antreprenoriatului și Turismului. Gestionează programe naționale de sprijin, inclusiv StartUp Nation. Platformă StartUp Nation: minimis.imm.gov.ro.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600 mb-2">ARICE (InvestRomania)</h3>
+                    <p class="text-sm text-gray-600">Agenția Română pentru Investiții și Comerț Exterior. Promovează investițiile străine directe. Oferă informații, consultanță, matchmaking. Contact: office@investromania.gov.ro.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600 mb-2">EEN România</h3>
+                    <p class="text-sm text-gray-600">Enterprise Europe Network. Rețea de sprijin pentru IMM-uri cu ambiții internaționale. Servicii gratuite: acces la finanțare, internaționalizare, inovare, transfer tehnologic, digitalizare.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600 mb-2">BERD (EBRD)</h3>
+                    <p class="text-sm text-gray-600">Banca Europeană pentru Reconstrucție și Dezvoltare. Finanțează investiții verzi, productivitate. Program relevant: EBRD Star Venture pentru startup-uri tech high-potential (consiliere, mentorat, rețea).</p>
+                </div>
+                 <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600 mb-2">Alte Acceleratoare</h3>
+                    <p class="text-sm text-gray-600">Ecosistem în creștere de acceleratoare private și universitare: Cluj Startups, Founder Institute Romania, ImpactHub Bucharest. Ofera suport sectorial, mentorat, networking, seed funding.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="challenges" class="pt-16 -mt-16 mb-12 card">
+            <h2 class="section-title">Navigarea Provocărilor și Asigurarea Succesului</h2>
+            <p class="text-lg text-gray-700 mb-6">
+                Deși România oferă un mediu promițător pentru startup-urile finanțate de UE, antreprenorii ar trebui să fie conștienți de potențialele provocări și să adopte proactiv strategii pentru a-și spori șansele de succes. Înțelegerea peisajului finanțării, a obstacolelor comune și a importanței pregătirii solide este esențială.
+            </p>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="subsection-title text-red-600">Provocări Comune</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>Fragmentarea reglementărilor și piețelor de capital subdezvoltate.</li>
+                        <li>Complexitatea programelor de finanțare și efortul administrativ.</li>
+                        <li>Birocrația persistentă.</li>
+                        <li>Asigurarea cofinanțării și gestionarea fluxului de numerar.</li>
+                        <li>Alinierea cu condițiile specifice ale programelor (ex: crearea de locuri de muncă).</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="subsection-title text-green-600">Factori de Succes</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>Procese îmbunătățite de acces la fonduri în România (ex: sisteme automate).</li>
+                        <li>Plan de afaceri robust și bine documentat.</li>
+                        <li>Alinierea proiectului cu prioritățile strategice UE și naționale.</li>
+                        <li>Capacitatea de a respecta regulile UE și cerințele de cofinanțare.</li>
+                        <li>Protecția timpurie a proprietății intelectuale (PI).</li>
+                    </ul>
+                    <p class="mt-4 text-sm text-gray-600"><strong>Rate de absorbție UE în România:</strong> 97.2% pentru programele Politicii de Coeziune; 33.3% (€9.5 miliarde) pentru PNRR (la începutul 2025).</p>
+                </div>
+            </div>
+             <div class="mt-8 p-6 bg-sky-50 rounded-lg shadow">
+                <h4 class="text-xl font-semibold text-sky-700 mb-2">Rolul Critic al Protecției Proprietății Intelectuale (PI)</h4>
+                <p class="text-gray-700">Pentru startup-urile inovatoare, protejarea PI (brevete, mărci, desene) este fundamentală. Asigură avantaj competitiv, atrage investiții și facilitează intrarea pe piață. Fondul pentru IMM-uri al EUIPO oferă vouchere pentru înregistrarea PI.</p>
+            </div>
+        </section>
+
+        <section id="post-funding" class="pt-16 -mt-16 mb-12 card">
+            <h2 class="section-title">Obligații și Conformitate Post-Finanțare</h2>
+             <p class="text-lg text-gray-700 mb-6">
+                Obținerea finanțării UE este o realizare importantă, dar marchează începutul unei faze active de management, caracterizată prin obligații riguroase de raportare, audit și conformitate. Respectarea acestor cerințe este crucială pentru execuția lină a proiectului, primirea la timp a fondurilor și evitarea potențialelor corecții financiare sau recuperări de fonduri. Această secțiune evidențiază principalele responsabilități post-finanțare.
+            </p>
+            <div class="accordion-item mb-4">
+                <div class="accordion-header" data-target="reporting-req-content">
+                    <span>Cerințe de Raportare</span>
+                    <span class="arrow transform transition-transform duration-300">&#9660;</span>
+                </div>
+                <div id="reporting-req-content" class="accordion-content hidden">
+                    <p>Beneficiarii trebuie să depună rapoarte periodice documentând progresul proiectului și cheltuielile. Frecvența și termenele limită variază (ex: Horizon Europe - perioade de 18 luni, rapoarte în 60 de zile). Pentru PNRR: Rapoarte de Progres finale cu documentație completă (audituri, certificate, dovezi vizuale) și Rapoarte de Sustenabilitate post-implementare.</p>
+                </div>
+            </div>
+            <div class="accordion-item mb-4">
+                <div class="accordion-header" data-target="audit-docs-content">
+                    <span>Proceduri de Audit și Păstrarea Documentelor</span>
+                     <span class="arrow transform transition-transform duration-300">&#9660;</span>
+                </div>
+                <div id="audit-docs-content" class="accordion-content hidden">
+                    <p>Proiectele finanțate de UE sunt supuse auditurilor. Auditurile pot fi efectuate în timpul implementării și până la 5 ani după plata finală. Beneficiarii trebuie să păstreze toate documentele justificative originale pentru această perioadă. Pentru PNRR, există instrucțiuni specifice privind arhivarea documentelor. Un Certificat privind Situațiile Financiare (CFS) poate fi necesar pentru proiecte mai mari.</p>
+                </div>
+            </div>
+            <div class="accordion-item mb-4">
+                <div class="accordion-header" data-target="rights-regs-content">
+                    <span>Asigurarea Conformității cu Drepturile Fundamentale și Reglementările UE</span>
+                     <span class="arrow transform transition-transform duration-300">&#9660;</span>
+                </div>
+                <div id="rights-regs-content" class="accordion-content hidden">
+                    <p>Proiectele trebuie să respecte drepturile fundamentale (Carta Drepturilor Fundamentale a UE). Beneficiarii sunt direct responsabili pentru conformitate. Comisia Europeană poate interveni în caz de încălcări.</p>
+                </div>
+            </div>
+             <div class="accordion-item mb-4">
+                <div class="accordion-header" data-target="publicity-req-content">
+                    <span>Cerințe de Informare și Publicitate (Vizibilitate)</span>
+                     <span class="arrow transform transition-transform duration-300">&#9660;</span>
+                </div>
+                <div id="publicity-req-content" class="accordion-content hidden">
+                    <p>Beneficiarii trebuie să recunoască sprijinul financiar al UE în activitățile de comunicare. Pentru PNRR: respectarea Manualului de Identitate Vizuală PNRR (emblema UE, logo PNRR, declarații de finanțare).</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="recommendations" class="pt-16 -mt-16 mb-12 card">
+            <h2 class="section-title">Recomandări Cheie și Pași Următori</h2>
+            <p class="text-lg text-gray-700 mb-6">
+                Lansarea și dezvoltarea cu succes a unui startup finanțat de UE în România necesită o planificare atentă, o execuție diligentă și o abordare proactivă pentru valorificarea resurselor disponibile și navigarea obligațiilor. Următoarele recomandări și pași următori pot ghida antreprenorii în această călătorie. Planificarea meticuloasă și managementul dedicat sunt esențiale. Utilizați butoanele "Elaborează ✨" pentru a obține detalii suplimentare generate de AI.
+            </p>
+            <h3 class="subsection-title">Checklist Inițial pentru Antreprenor</h3>
+            <div id="initial-checklist" class="space-y-3 mt-4 text-gray-700">
+                <label class="checklist-item"><input type="checkbox" disabled> <strong>Definiți Ideea de Afaceri:</strong> Aliniați conceptul cu prioritățile UE/RO (inovație digitală, tehnologie verde etc.).</label>
+                <label class="checklist-item"><input type="checkbox" disabled> <strong>Cercetați Apelurile de Finanțare:</strong> Căutați activ apeluri curente și viitoare pe portalurile MIPE, MEAT, Comisia Europeană.</label>
+                <label class="checklist-item"><input type="checkbox" disabled> <strong>Evaluați Eligibilitatea:</strong> Analizați obiectiv eligibilitatea personală și a afacerii conform criteriilor programelor.</label>
+                <label class="checklist-item"><input type="checkbox" disabled> <strong>Înscrieți-vă la Precondiții:</strong> Dacă vizați StartUp Nation, înregistrați-vă la cursurile antreprenoriale obligatorii.</label>
+                <label class="checklist-item"><input type="checkbox" disabled> <strong>Investigați Înregistrarea SRL:</strong> Familiarizați-vă cu procesul ONRC și decideți dacă apelați la experți locali.</label>
+                <label class="checklist-item"><input type="checkbox" disabled> <strong>Estimați Costurile:</strong> Dezvoltați un buget preliminar pentru costurile de pornire, inclusiv cofinanțarea necesară.</label>
+            </div>
+             <div class="mt-8 p-6 bg-sky-50 rounded-lg shadow">
+                <h4 class="text-xl font-semibold text-sky-700 mb-3">Recomandări Generale Suplimentare</h4>
+                <ul id="general-recommendations-list" class="list-disc list-inside space-y-2 text-gray-700">
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-sky-800 text-white py-8 text-center">
+        <p>&copy; 2025 Ghid Interactiv Startup România UE. Toate drepturile rezervate.</p>
+        <p class="text-sm text-sky-200">Informațiile prezentate sunt bazate pe date disponibile la începutul anului 2025 și au scop informativ. Consultați întotdeauna sursele oficiale.</p>
+    </footer>
+
+    <div id="aiModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="aiModalTitle" class="modal-title">Perspective AI</h3>
+            <div id="aiModalBody" class="modal-body">
+                <div class="loading-spinner"></div>
+                <p id="aiModalText" class="mt-2"></p>
+            </div>
+            <button id="aiModalCloseBtn" class="modal-close-btn">Închide</button>
+        </div>
+    </div>
+
+    <script>
+        const fundingData = [
+            { name: "StartUp Nation 2025", target: "Companii noi; Tineri antreprenori (Pilon I), Alte grupuri specifice (Pilon II)", maxGrantRON: 250000, maxGrantEUR: 50000, cofinancing: 10, focus: "Creare IMM-uri, Locuri de muncă, Dezvoltare competențe" },
+            { name: "PNRR Digitalizare IMM", target: "IMM-uri", maxGrantRON: null, maxGrantEUR: 100000, cofinancing: 'Var./apel', focus: "Transformare digitală IMM-uri" },
+            { name: "PTJ Grant Microîntreprinderi", target: "Microîntreprinderi în jud. Gorj, Hunedoara, Dolj, Galați, Prahova, Mureș", maxGrantRON: 1500000, maxGrantEUR: 300000, cofinancing: 10, focus: "Creștere sustenabilă, Locuri de muncă în regiuni în tranziție" },
+            { name: "PR BI P1/1.8/1/2025 (București-Ilfov)", target: "Microîntreprinderi în București-Ilfov", maxGrantRON: 1500000, maxGrantEUR: 300000, cofinancing: 'Var./apel', focus: "Creștere sustenabilă, Modernizare tehnologică microîntreprinderi (B-IF)" }
+        ];
+
+        const generalRecommendations = [
+            "Cercetați și Selectați Atent Programul de Finanțare: Analizați obiectivele, eligibilitatea, sumele, cofinanțarea și activitățile eligibile.",
+            "Pregătiți un Plan de Afaceri Robust: Aliniați-l clar cu prioritățile programului de finanțare ales (creare de locuri de muncă, digitalizare, tranziție verde etc.).",
+            "Planificați Cofinanțarea și Precondițiile: Asigurați capacitatea financiară și îndepliniți la timp cerințele prealabile (ex: cursuri).",
+            "Navigați Diligent Înregistrarea Companiei: Utilizați checklist-uri, luați în considerare agenții specializate și abordați cerința de \"substanță\" (angajați) pentru taxe preferențiale.",
+            "Valorificați Ecosistemul de Sprijin: Contactați ARICE, EEN România, explorați programe BERD și acceleratoare locale.",
+            "Planificați Conformitatea Post-Finanțare de la Început: Stabiliți sisteme de înregistrare financiară și operațională robuste; alocați resurse pentru raportare și audituri."
+        ];
+
+        function populateFundingTable() {
+            const tableBody = document.getElementById('fundingTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = ''; 
+            fundingData.forEach((program, index) => {
+                let row = tableBody.insertRow();
+                row.insertCell().textContent = program.name;
+                row.insertCell().textContent = program.target;
+                let grantText = program.maxGrantEUR ? `~€${program.maxGrantEUR.toLocaleString()}` : '';
+                if (program.maxGrantRON) {
+                    grantText = `${program.maxGrantRON.toLocaleString()} RON (${grantText})`;
+                }
+                row.insertCell().textContent = grantText.trim();
+                row.insertCell().textContent = typeof program.cofinancing === 'number' ? `${program.cofinancing}%` : program.cofinancing;
+                row.insertCell().textContent = program.focus;
+                
+                const aiCell = row.insertCell();
+                const aiButton = document.createElement('button');
+                aiButton.innerHTML = "Obține Sfaturi AI ✨";
+                aiButton.classList.add('ai-button');
+                aiButton.onclick = () => fetchFundingTips(program.name, program.focus);
+                aiCell.appendChild(aiButton);
+            });
+        }
+        
+        function populateRecommendationsList() {
+            const listElement = document.getElementById('general-recommendations-list');
+            listElement.innerHTML = '';
+            generalRecommendations.forEach(recText => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('flex', 'justify-between', 'items-center', 'py-1');
+                
+                const textSpan = document.createElement('span');
+                textSpan.textContent = recText;
+                listItem.appendChild(textSpan);
+
+                const aiButton = document.createElement('button');
+                aiButton.innerHTML = "Elaborează ✨";
+                aiButton.classList.add('ai-button', 'ml-2', 'flex-shrink-0');
+                aiButton.onclick = () => fetchRecommendationElaboration(recText);
+                listItem.appendChild(aiButton);
+                
+                listElement.appendChild(listItem);
+            });
+        }
+
+
+        let sortDirection = [];
+        function sortTable(columnIndex) {
+            const table = document.getElementById('fundingTable');
+            const tbody = table.tBodies[0];
+            const rows = Array.from(tbody.rows);
+            const headerCell = table.tHead.rows[0].cells[columnIndex];
+            const arrows = table.tHead.querySelectorAll('.sort-arrow');
+            arrows.forEach(arrow => arrow.textContent = '');
+
+            const currentDirection = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+            sortDirection = []; 
+            sortDirection[columnIndex] = currentDirection;
+            headerCell.querySelector('.sort-arrow').textContent = currentDirection === 'asc' ? ' ▲' : ' ▼';
+            
+            rows.sort((a, b) => {
+                let valA = a.cells[columnIndex].textContent.trim();
+                let valB = b.cells[columnIndex].textContent.trim();
+
+                if (columnIndex === 2) { 
+                    const regex = /€([\d,]+)/;
+                    const matchA = valA.match(regex);
+                    const matchB = valB.match(regex);
+                    if (matchA && matchB) {
+                        valA = parseFloat(matchA[1].replace(/,/g, ''));
+                        valB = parseFloat(matchB[1].replace(/,/g, ''));
+                    } else if (matchA) { 
+                         valA = parseFloat(matchA[1].replace(/,/g, ''));
+                         valB = 0; 
+                    } else if (matchB) { 
+                         valB = parseFloat(matchB[1].replace(/,/g, ''));
+                         valA = 0; 
+                    } else { 
+                        const ronRegex = /([\d,]+) RON/;
+                        const ronMatchA = valA.match(ronRegex);
+                        const ronMatchB = valB.match(ronRegex);
+                        if (ronMatchA && ronMatchB) {
+                             valA = parseFloat(ronMatchA[1].replace(/,/g, ''));
+                             valB = parseFloat(ronMatchB[1].replace(/,/g, ''));
+                        }
+                    }
+                } else if (columnIndex === 3) { 
+                     valA = parseFloat(valA) || (valA.toLowerCase() === 'var./apel' ? -1 : Infinity); 
+                     valB = parseFloat(valB) || (valB.toLowerCase() === 'var./apel' ? -1 : Infinity);
+                }
+
+                if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB)) && (typeof valA !== 'string' || typeof valB !== 'string') ) {
+                     valA = parseFloat(valA);
+                     valB = parseFloat(valB);
+                }
+
+                if (valA < valB) {
+                    return currentDirection === 'asc' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return currentDirection === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        const fundingProgramsChartCtx = document.getElementById('fundingProgramsChart').getContext('2d');
+        new Chart(fundingProgramsChartCtx, {
+            type: 'bar',
+            data: {
+                labels: fundingData.map(p => p.name.length > 20 ? p.name.substring(0, 18) + '...' : p.name),
+                datasets: [{
+                    label: 'Grant Maxim (EUR)',
+                    data: fundingData.map(p => p.maxGrantEUR || 0),
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)', 
+                    borderColor: 'rgba(30, 64, 175, 1)', 
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: function(value) { return '€' + value.toLocaleString(); } }
+                    },
+                    x: {
+                        ticks: {
+                             maxRotation: 45, minRotation: 45, autoSkip: false,
+                             callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label.length > 16 ? label.substring(0, 16) + '...' : label;
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) { label += '€' + context.parsed.y.toLocaleString(); }
+                                const originalLabel = fundingData[context.dataIndex].name;
+                                return [originalLabel, label];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        populateFundingTable();
+        populateRecommendationsList();
+
+        const accordionHeaders = document.querySelectorAll('.accordion-header');
+        accordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const targetId = header.dataset.target;
+                const content = document.getElementById(targetId);
+                const arrow = header.querySelector('.arrow');
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    arrow.classList.add('rotate-180');
+                } else {
+                    content.classList.add('hidden');
+                    arrow.classList.remove('rotate-180');
+                }
+            });
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('nav-link-active'));
+                    if (!this.classList.contains('block')) { 
+                         this.classList.add('nav-link-active');
+                    }
+                    const mobileMenu = document.getElementById('mobile-menu');
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                }
+            });
+        });
+        
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('header nav a.nav-link');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 80) { 
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('nav-link-active');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.add('nav-link-active');
+                }
+            });
+            if (!current && navLinks.length > 0) {
+                document.querySelector('a[href="#home"].nav-link').classList.add('nav-link-active');
+            }
+        });
+
+        // AI Modal Logic
+        const aiModal = document.getElementById('aiModal');
+        const aiModalTitle = document.getElementById('aiModalTitle');
+        const aiModalBody = document.getElementById('aiModalBody');
+        const aiModalText = document.getElementById('aiModalText');
+        const aiModalCloseBtn = document.getElementById('aiModalCloseBtn');
+        const loadingSpinner = aiModalBody.querySelector('.loading-spinner');
+
+        function showAiModal(title) {
+            aiModalTitle.textContent = title;
+            aiModalText.innerHTML = ''; 
+            loadingSpinner.style.display = 'block'; 
+            aiModal.classList.remove('hidden');
+        }
+
+        function hideAiModal() {
+            aiModal.classList.add('hidden');
+        }
+
+        aiModalCloseBtn.addEventListener('click', hideAiModal);
+        aiModal.addEventListener('click', (event) => { 
+            if (event.target === aiModal) {
+                hideAiModal();
+            }
+        });
+        
+        async function callProxyAPI(userPrompt) {
+            // IMPORTANT: Replace this with the actual URL of your deployed Google Cloud Function or other backend proxy
+            const proxyApiUrl = "YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE"; 
+
+            if (proxyApiUrl === "YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE" || proxyApiUrl.trim() === "") {
+                console.error("Proxy API URL is not configured in the HTML file.");
+                loadingSpinner.style.display = 'none';
+                aiModalText.innerHTML = "Adresa URL a funcției backend (proxy) nu este configurată în fișierul HTML. Vă rugăm să actualizați variabila 'proxyApiUrl' în scriptul paginii cu URL-ul corect al funcției dumneavoastră serverless.";
+                return; // Stop execution if URL is not set
+            }
+            
+            const payload = { prompt: userPrompt }; // Send the user's prompt to your backend proxy
+
+            try {
+                const response = await fetch(proxyApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let errorBodyText = await response.text(); 
+                    console.error(`Proxy API Error: Status ${response.status}`, errorBodyText);
+                    let errorDetails = `Status: ${response.status} ${response.statusText}.`;
+                     try {
+                        const errorData = JSON.parse(errorBodyText); 
+                        errorDetails += ` Detalii de la serverul proxy: ${errorData?.error || errorData?.message || JSON.stringify(errorData)}`;
+                    } catch (e) {
+                        errorDetails += ` Răspuns de la serverul proxy: ${errorBodyText.substring(0, 200)}${errorBodyText.length > 200 ? '...' : ''}`;
+                    }
+                    loadingSpinner.style.display = 'none';
+                    aiModalText.innerHTML = `Eroare la comunicarea cu serverul proxy. ${errorDetails}`;
+                    return; // Stop execution on error
+                }
+
+                const result = await response.json(); // Expecting JSON like { "text": "AI generated text" } or { "error": "some error from proxy" }
+
+                if (result.error) {
+                    console.error("Error from proxy server:", result.error);
+                    loadingSpinner.style.display = 'none';
+                    aiModalText.innerHTML = `A apărut o eroare de la serverul proxy: ${result.error}`;
+                    return; // Stop execution on error
+                }
+                
+                if (result.text) { 
+                    return result.text; // Return the AI-generated text
+                } else {
+                    console.error("Unexpected response structure from proxy:", result);
+                    loadingSpinner.style.display = 'none';
+                    aiModalText.innerHTML = "Răspuns neașteptat de la serverul proxy. Asigurați-vă că proxy-ul returnează un obiect JSON cu o proprietate 'text'.";
+                    return; // Stop execution
+                }
+            } catch (error) { 
+                console.error("Fetch/Processing Error in callProxyAPI:", error);
+                loadingSpinner.style.display = 'none';
+                aiModalText.innerHTML = `A apărut o eroare la conectarea la serverul proxy: ${error.message}. Verificați consola pentru detalii și configurația URL-ului proxy.`;
+                return; // Stop execution on error
+            }
+        }
+
+        async function fetchFundingTips(programName, programFocus) {
+            showAiModal(`Sfaturi AI pentru ${programName}`);
+            const userPrompt = `Pentru un startup din România care aplică la programul de finanțare '${programName}', care are ca obiectiv principal '${programFocus}', oferă 3 sfaturi concise și acționabile pentru o aplicație puternică. Formatează răspunsul ca o listă cu marcatori.`;
+            const tips = await callProxyAPI(userPrompt);
+            
+            loadingSpinner.style.display = 'none'; 
+            if (tips) { // Only update if tips were successfully fetched
+                aiModalText.innerHTML = tips.replace(/\n/g, '<br>'); 
+            } else if (!aiModalText.innerHTML) { // If no error message was set by callProxyAPI
+                 aiModalText.innerHTML = "Nu s-au putut obține sfaturi AI în acest moment.";
+            }
+        }
+
+        async function fetchRecommendationElaboration(recommendationText) {
+            showAiModal(`Elaborare AI pentru: ${recommendationText.substring(0,50)}...`);
+            const userPrompt = `Elaborează următoarea recomandare pentru un startup din România: "${recommendationText}". Oferă 2-3 perspective acționabile sau detalii suplimentare, sub formă de listă cu marcatori.`;
+            const elaboration = await callProxyAPI(userPrompt);
+
+            loadingSpinner.style.display = 'none'; 
+            if (elaboration) { // Only update if elaboration was successfully fetched
+                aiModalText.innerHTML = elaboration.replace(/\n/g, '<br>');
+            } else if (!aiModalText.innerHTML) { // If no error message was set by callProxyAPI
+                aiModalText.innerHTML = "Nu s-a putut obține elaborarea AI în acest moment.";
+            }
+        }
+
+    </script>
+</body>
+</html>
